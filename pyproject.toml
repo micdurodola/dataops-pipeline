@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "financial-dataops-pyspark"
+version = "0.1.0"
+description = "Financial transactions ETL pipeline using PySpark"
+requires-python = ">=3.11"
+dependencies = [
+    "pyspark>=3.5,<3.6"
+]
+
+[tool.setuptools]
+packages = ["src"]

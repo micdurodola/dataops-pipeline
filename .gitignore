@@ -1,0 +1,17 @@
+.env
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+data/processed/
+data/aggregated/
+data/quarantine/
+logs/
+runs/
+build/
+dist/
