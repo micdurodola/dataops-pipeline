@@ -1,6 +1,0 @@
-Metadata-Version: 2.4
-Name: financial-dataops-pyspark
-Version: 0.1.0
-Summary: Financial transactions ETL pipeline using PySpark
-Requires-Python: >=3.11
-Requires-Dist: pyspark<3.6,>=3.5
