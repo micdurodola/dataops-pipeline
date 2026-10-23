@@ -1,56 +1,89 @@
-# Financial DataOps — PySpark Local Prototype
+Financial DataOps Pipeline
 
-**Implemented:** Local CSV → PySpark validation/transformations → Parquet datasets + CSV quarantine; Pytest, GitHub Actions, JSON run audit. **No Pandas, no PyArrow package requirement, no AWS deployment, no Docker.** Spark uses its own JVM-backed Parquet support.
+A simple financial transaction ETL pipeline built with Python and PySpark. The project processes CSV transaction data, validates records, and writes the results to Parquet.
 
-## MacBook / VS Code setup
+Tech Stack
 
-Install Java 17 (`brew install --cask temurin@17`), then check `java -version` and `echo $JAVA_HOME`. PySpark 3.5 supports Java 8/11/17; Java 17 is the recommended choice for this project. Use Python 3.11 or 3.12.
+* Python 3.11
+* PySpark
+* Pytest
+* GitHub Actions
+* Python Wheel
+* Terraform (AWS infrastructure design)
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-python -m pytest -v
-python -m src.pipeline
-```
+Dependencies
 
-If Spark cannot find Java on macOS, try `export JAVA_HOME=$(/usr/libexec/java_home -v 17)` in your terminal before running it.
+Defined in requirements.txt:
 
-## Outputs
+pyspark>=3.5,<4
+pytest>=8,<10
+build>=1.2,<2
 
-- `data/processed/transactions.parquet/` — **directory** of Spark-generated Parquet part files
-- `data/aggregated/daily_summary.parquet/` — daily counts and amounts **grouped by currency**
-- `data/quarantine/rejected_transactions/` — CSV part files containing rejected rows and reasons
-- `runs/<timestamp>.json` — input SHA-256, record counts, duration, code version
+Java 17 is required to run PySpark.
 
-Spark writes directories, not individual `.parquet` files. It is expected to see `part-00000-....parquet` inside each output folder.
+Project Structure
 
-## Inspect output using PySpark
+src/
+├── main.py           # Pipeline entry point
+├── reader.py         # Read CSV data
+├── transactions.py   # Clean and enrich transactions
+├── validation.py     # Validate records
+├── daily.py          # Daily aggregation
+└── writer.py         # Write output datasets
+tests/                # Pytest tests
+data/raw/             # Input CSV
+terraform/aws/        # Proposed AWS infrastructure
+.github/workflows/    # GitHub Actions CI
 
-```bash
-python
-```
-```python
-from pyspark.sql import SparkSession
-spark = SparkSession.builder.master('local[2]').appName('inspect').getOrCreate()
-df = spark.read.parquet('data/processed/transactions.parquet')
-df.groupBy('currency').sum('amount').show()
-spark.stop()
-```
+Pipeline
 
-## Rules
+The pipeline follows these steps:
 
-Required fields, positive amounts, ISO date, supported currencies (GBP/USD/EUR), supported transaction types, and transaction ID uniqueness. **All rows sharing a duplicate ID are quarantined**, avoiding nondeterministic deduplication. Accepted + rejected = total. High-value flag is a demo enrichment, not fraud detection. Decimal(18,2) avoids binary floating-point currency sums. The example assumes positive transaction amounts and uses transaction type to describe direction.
+CSV → Cleaning → Validation → Enrichment → Aggregation → Parquet
 
-**Reruns overwrite** the same output folders. This avoids accumulating duplicate data, but is not a production-grade atomic multi-dataset commit. Data is synthetic. Spark reads the CSV with an explicit schema and fails on malformed records.
+Invalid transactions are written to a separate CSV quarantine folder with rejection reasons.
 
-## CI and IaC
+Output
 
-GitHub Actions runs Pytest, executes the local Spark ETL on a hosted runner, checks Parquet outputs, and uploads output artifacts. A separate job validates `terraform/aws/` without deploying AWS resources. Terraform describes an **illustrative** S3/Glue/IAM production design; the local pipeline does not yet read/write S3 and is not a deployable Glue script. Terraform validation is not infrastructure provisioning.
+Dataset	Location
+Processed transactions	data/processed/transactions.parquet/
+Daily summary	data/aggregated/daily_summary.parquet/
+Rejected transactions	data/quarantine/rejected_transactions/
 
-The example does not require secrets. Configuration comes from process environment variables; `.env.example` is documentation only, not automatically loaded.
+Pipeline logs are saved to logs/pipeline.log.
 
-## Suggested interview demo
+Running the Pipeline
 
-Show CSV, run tests, run ETL, show logs/audit JSON, inspect Parquet with Spark, show quarantined records, show GitHub Actions run, and explain Glue/S3 as a production extension.
+python -m src.main
+
+Testing
+
+The project includes PySpark tests for validation, missing columns, aggregation, high-value transactions, and end-to-end processing.
+
+python -m pytest tests/ -v
+
+Python Wheel
+
+The ETL code is packaged as a Python wheel using pyproject.toml.
+
+python -m build --wheel
+
+The generated wheel is stored in dist/.
+
+GitHub Actions
+
+The CI workflow runs automatically on pushes and pull requests.
+
+It performs three main tasks:
+
+1. Runs the Python tests.
+2. Builds the Python wheel if the tests pass.
+3. Uploads the wheel as a GitHub Actions artifact.
+
+AWS
+
+The terraform/aws/ directory contains a proposed AWS infrastructure setup using S3, Glue, and IAM.
+
+The plan is to upload the Python wheel to S3 and use it as a dependency in an AWS Glue job.
+
+AWS deployment is not implemented in this prototype.
