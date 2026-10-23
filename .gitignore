@@ -15,3 +15,4 @@ logs/
 runs/
 build/
 dist/
+*.egg-info/
